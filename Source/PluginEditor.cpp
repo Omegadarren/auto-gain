@@ -345,8 +345,9 @@ AutoGainAudioProcessorEditor::AutoGainAudioProcessorEditor (AutoGainAudioProcess
     // Output gain knob
     outputGainSlider.setTextValueSuffix (" dB");
     outputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 14);
-    outputGainSlider.setTooltip ("Target output level. The auto-gain raises or lowers "
-                                 "the signal to reach this level.");
+    outputGainSlider.setTooltip ("Output level trim applied to the normalized (wet) signal. "
+                                 "Mix=0% passes the dry signal through unchanged; "
+                                 "Mix=100% gives fully auto-gained audio at this output level.");
     addAndMakeVisible (outputGainSlider);
     outputGainLabel.setText ("TARGET LEVEL", juce::dontSendNotification);
     outputGainLabel.setFont  (juce::Font (9.0f));

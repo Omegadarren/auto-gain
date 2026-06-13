@@ -50,7 +50,9 @@ void AutoGainAudioProcessor::prepareToPlay (double sr, int)
     // Gain smoothing: 600ms — very gradual, "no dynamics" transitions
     gainCoeff = std::exp (-1.0f / (0.60f * (float)sr));
 
-    rmsPower        = 0.f;
+    // Init rmsPower to 0 dBFS so the first desired-gain estimate is 1.0
+    // (avoids the startup explosion when rmsPower=0 → desired=∞)
+    rmsPower        = 1.0f;
     gainSmooth      = 1.f;
     inputRmsSmooth  = 0.f;
     outputRmsSmooth = 0.f;
@@ -71,11 +73,11 @@ void AutoGainAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     const float sr            = (float)currentSampleRate;
 
     const float targetDb      = apvts.getRawParameterValue ("outputGain")->load();
-    const float targetLinear  = std::pow (10.f, targetDb / 20.f);
+    const float outGainLinear = std::pow (10.f, targetDb / 20.f);
     const float mixFrac       = apvts.getRawParameterValue ("mix")->load() / 100.f;
 
     static constexpr float kEpsilon = 1.0e-5f;   // -100 dBFS noise floor
-    static constexpr float kMaxGain = 100.f;      // +40 dB max boost
+    static constexpr float kMaxGain = 10.f;       // +20 dB max boost (prevents runaway on silence)
 
     float inSumSq    = 0.f;
     float outSumSq   = 0.f;
@@ -97,18 +99,21 @@ void AutoGainAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         rmsPower = rmsCoeff * rmsPower + (1.f - rmsCoeff) * monoIn * monoIn;
         float rmsLin = std::sqrt (juce::jmax (rmsPower, kEpsilon * kEpsilon));
 
-        // ── Desired gain to reach target level ───────────────────────────────
-        float desired = juce::jlimit (1.f / kMaxGain, kMaxGain, targetLinear / rmsLin);
+        // ── Desired gain to normalize to 0 dBFS (internal fixed reference) ──
+        float desired = juce::jlimit (1.f / kMaxGain, kMaxGain, 1.0f / rmsLin);
 
         // ── Smooth the gain (avoids any audible dynamics artifacts) ───────────
         gainSmooth = gainCoeff * gainSmooth + (1.f - gainCoeff) * desired;
 
-        // ── Apply with wet/dry blend ──────────────────────────────────────────
+        // ── Signal path: dry blend + output trim ──────────────────────────────
+        // Mix=0%  → pure dry (original signal, untouched)
+        // Mix=100% → fully auto-gain-normalized, trimmed to target output level
+        // outGainLinear only scales the wet (affected) portion
         float outSample0 = 0.f;
         for (int ch = 0; ch < numCh; ++ch)
         {
-            float wet = inp[ch] * gainSmooth;
-            float out = inp[ch] + (wet - inp[ch]) * mixFrac;
+            float wet = inp[ch] * gainSmooth * outGainLinear;
+            float out = inp[ch] * (1.f - mixFrac) + wet * mixFrac;
             buffer.getWritePointer (ch)[n] = out;
             if (ch == 0) outSample0 = out;
         }
