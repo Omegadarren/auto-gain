@@ -1,0 +1,12 @@
+build/
+_deps/
+*.user
+*.suo
+.vs/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+Thumbs.db
+.DS_Store
+*.vst3
