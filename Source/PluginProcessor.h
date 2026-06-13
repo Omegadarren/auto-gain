@@ -66,11 +66,12 @@ public:
 private:
     double currentSampleRate = 44100.0;
 
-    // Per-sample RMS envelope follower (slow, for "no dynamics" leveling)
-    float rmsPower       = 0.f;   // smoothed power (linear)
+    // Attack/release envelope follower for note-level tracking
+    float envFollower    = 1.f;   // smoothed peak level (linear)
     float gainSmooth     = 1.f;   // smoothed gain (linear)
-    float rmsCoeff       = 0.f;   // exp(-1 / (rmsTime * sr))
-    float gainCoeff      = 0.f;   // exp(-1 / (gainTime * sr))
+    float attackCoeff    = 0.f;   // fast attack  (~15 ms)
+    float releaseCoeff   = 0.f;   // slow release (~600 ms)
+    float gainCoeff      = 0.f;   // tiny gain smooth (~2 ms) to prevent zippering
 
     // Separate meter smoothers (faster, for UI display)
     float inputRmsSmooth  = 0.f;

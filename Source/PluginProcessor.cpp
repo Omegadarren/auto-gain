@@ -45,14 +45,15 @@ void AutoGainAudioProcessor::prepareToPlay (double sr, int)
 {
     currentSampleRate = sr;
 
-    // RMS envelope: 300ms — slow enough that individual notes don't affect it
-    rmsCoeff  = std::exp (-1.0f / (0.30f * (float)sr));
-    // Gain smoothing: 600ms — very gradual, "no dynamics" transitions
-    gainCoeff = std::exp (-1.0f / (0.60f * (float)sr));
+    // 15ms attack  — quickly catches new note levels
+    attackCoeff  = std::exp (-1.f / (0.015f * (float)sr));
+    // 600ms release — slowly drops between notes, avoids noise-floor pumping
+    releaseCoeff = std::exp (-1.f / (0.600f * (float)sr));
+    // 2ms gain smooth — just enough to prevent zipper noise, no audible lag
+    gainCoeff    = std::exp (-1.f / (0.002f * (float)sr));
 
-    // Init rmsPower to 0 dBFS so the first desired-gain estimate is 1.0
-    // (avoids the startup explosion when rmsPower=0 → desired=∞)
-    rmsPower        = 1.0f;
+    // Start envelope at 1.0 so initial desired gain = targetLinear (no startup spike)
+    envFollower     = 1.f;
     gainSmooth      = 1.f;
     inputRmsSmooth  = 0.f;
     outputRmsSmooth = 0.f;
@@ -95,14 +96,18 @@ void AutoGainAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
         monoIn /= (float)numCh;
 
-        // ── Slow RMS envelope follower ────────────────────────────────────────
-        rmsPower = rmsCoeff * rmsPower + (1.f - rmsCoeff) * monoIn * monoIn;
-        float rmsLin = std::sqrt (juce::jmax (rmsPower, kEpsilon * kEpsilon));
+        // ── Attack/release envelope follower ─────────────────────────────────
+        float absIn = std::abs (monoIn);
+        if (absIn > envFollower)
+            envFollower = attackCoeff  * envFollower + (1.f - attackCoeff)  * absIn;
+        else
+            envFollower = releaseCoeff * envFollower + (1.f - releaseCoeff) * absIn;
 
-        // ── Desired gain to normalize to 0 dBFS (internal fixed reference) ──
-        float desired = juce::jlimit (1.f / kMaxGain, kMaxGain, 1.0f / rmsLin);
+        // ── Desired gain: bring envelope level up to target ────────────────
+        float level   = juce::jmax (envFollower, kEpsilon);
+        float desired = juce::jlimit (1.f / kMaxGain, kMaxGain, outGainLinear / level);
 
-        // ── Smooth the gain (avoids any audible dynamics artifacts) ───────────
+        // ── Tiny gain smooth to avoid zipper noise ────────────────────────
         gainSmooth = gainCoeff * gainSmooth + (1.f - gainCoeff) * desired;
 
         // ── Signal path: dry blend + output trim ──────────────────────────────
