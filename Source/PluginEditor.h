@@ -26,22 +26,28 @@ private:
     std::unique_ptr<juce::Component>      gainDisplay;  // GainDisplay (defined in .cpp)
 
     // Controls
-    juce::Slider outputGainSlider { juce::Slider::RotaryVerticalDrag,
-                                    juce::Slider::TextBoxBelow };
+    juce::Slider attackSlider         { juce::Slider::RotaryVerticalDrag,
+                                        juce::Slider::TextBoxBelow };
+    juce::Label  attackLabel;
+    juce::Slider releaseSlider        { juce::Slider::RotaryVerticalDrag,
+                                        juce::Slider::TextBoxBelow };
+    juce::Label  releaseLabel;
+    juce::Slider outputGainSlider     { juce::Slider::RotaryVerticalDrag,
+                                        juce::Slider::TextBoxBelow };
     juce::Label  outputGainLabel;
-    juce::Slider mixSlider        { juce::Slider::RotaryVerticalDrag,
-                                    juce::Slider::TextBoxBelow };
+    juce::Slider mixSlider            { juce::Slider::RotaryVerticalDrag,
+                                        juce::Slider::TextBoxBelow };
     juce::Label  mixLabel;
 
     using SliderAtt = juce::AudioProcessorValueTreeState::SliderAttachment;
-    std::unique_ptr<SliderAtt> outputGainAtt, mixAtt;
+    std::unique_ptr<SliderAtt> attackAtt, releaseAtt, outputGainAtt, mixAtt;
 
     // Zoom
     int zoomIndex = 0;
     static constexpr float       kZoomFactors[] = { 1.0f, 1.5f, 2.0f };
     static constexpr const char* kZoomLabels[]  = { "1x", "1.5x", "2x" };
     static constexpr int kBaseW = 600;
-    static constexpr int kBaseH = 440;
+    static constexpr int kBaseH = 460;
     juce::Rectangle<int> zoomButtonBounds;
 
     juce::TooltipWindow tooltipWindow { this, 700 };

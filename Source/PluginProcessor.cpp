@@ -19,6 +19,18 @@ AutoGainAudioProcessor::buildLayout()
         100.0f,
         juce::AudioParameterFloatAttributes().withLabel ("%")));
 
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "attack", "Attack",
+        juce::NormalisableRange<float> (1.0f, 500.0f, 0.1f, 0.4f),
+        15.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        "release", "Release",
+        juce::NormalisableRange<float> (50.0f, 2000.0f, 1.0f, 0.4f),
+        600.0f,
+        juce::AudioParameterFloatAttributes().withLabel ("ms")));
+
     return layout;
 }
 
@@ -76,6 +88,12 @@ void AutoGainAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     const float targetDb      = apvts.getRawParameterValue ("outputGain")->load();
     const float outGainLinear = std::pow (10.f, targetDb / 20.f);
     const float mixFrac       = apvts.getRawParameterValue ("mix")->load() / 100.f;
+
+    // Recalculate attack/release coefficients from user params
+    const float attackMs  = apvts.getRawParameterValue ("attack")->load();
+    const float releaseMs = apvts.getRawParameterValue ("release")->load();
+    attackCoeff  = std::exp (-1.f / (attackMs  * 0.001f * sr));
+    releaseCoeff = std::exp (-1.f / (releaseMs * 0.001f * sr));
 
     static constexpr float kEpsilon = 1.0e-5f;   // -100 dBFS noise floor
     static constexpr float kMaxGain = 10.f;       // +20 dB max boost (prevents runaway on silence)

@@ -342,6 +342,30 @@ AutoGainAudioProcessorEditor::AutoGainAudioProcessorEditor (AutoGainAudioProcess
     gainDisplay = std::make_unique<GainDisplay> (p);
     addAndMakeVisible (*gainDisplay);
 
+    // Attack knob
+    attackSlider.setTextValueSuffix (" ms");
+    attackSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 14);
+    attackSlider.setTooltip ("Attack time: how quickly the gain responds to a louder signal (1-500ms). Shorter = tighter leveling.");
+    addAndMakeVisible (attackSlider);
+    attackLabel.setText ("ATTACK", juce::dontSendNotification);
+    attackLabel.setFont  (juce::Font (9.0f));
+    attackLabel.setColour (juce::Label::textColourId, kTextDim);
+    attackLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (attackLabel);
+    attackAtt = std::make_unique<SliderAtt> (p.apvts, "attack", attackSlider);
+
+    // Release knob
+    releaseSlider.setTextValueSuffix (" ms");
+    releaseSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 14);
+    releaseSlider.setTooltip ("Release time: how slowly the gain recovers after a loud signal fades (50-2000ms). Longer = smoother, less pumping.");
+    addAndMakeVisible (releaseSlider);
+    releaseLabel.setText ("RELEASE", juce::dontSendNotification);
+    releaseLabel.setFont  (juce::Font (9.0f));
+    releaseLabel.setColour (juce::Label::textColourId, kTextDim);
+    releaseLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (releaseLabel);
+    releaseAtt = std::make_unique<SliderAtt> (p.apvts, "release", releaseSlider);
+
     // Output gain knob
     outputGainSlider.setTextValueSuffix (" dB");
     outputGainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 58, 14);
@@ -394,12 +418,15 @@ void AutoGainAudioProcessorEditor::resized()
     // Display: y=52, height=216
     gainDisplay->setBounds (8, 52, kBaseW - 16, 216);
 
-    // Knobs: cx=180 (gain) and cx=420 (mix), y=326..400 (74px)
-    outputGainSlider.setBounds (150, 328, 60, 74);
-    outputGainLabel .setBounds (150, 402, 60, 14);
-
-    mixSlider .setBounds (390, 328, 60, 74);
-    mixLabel  .setBounds (390, 402, 60, 14);
+    // Knobs: 4 evenly across 600px  cx = 120, 240, 360, 480
+    attackSlider      .setBounds ( 90, 328, 60, 74);
+    attackLabel       .setBounds ( 90, 402, 60, 14);
+    releaseSlider     .setBounds (210, 328, 60, 74);
+    releaseLabel      .setBounds (210, 402, 60, 14);
+    outputGainSlider  .setBounds (330, 328, 60, 74);
+    outputGainLabel   .setBounds (330, 402, 60, 14);
+    mixSlider         .setBounds (450, 328, 60, 74);
+    mixLabel          .setBounds (450, 402, 60, 14);
 }
 
 //==============================================================================
@@ -527,24 +554,28 @@ void AutoGainAudioProcessorEditor::paint (juce::Graphics& g)
         g.setColour (kDivider.withAlpha (0.28f));
         g.drawRoundedRectangle (panel.reduced (0.5f), 5.5f, 0.8f);
 
-        // Section header labels
+        // Section header labels for 4 knobs
         g.setFont (juce::Font (9.5f, juce::Font::bold));
         g.setColour (kTextDim.withAlpha (0.60f));
-        g.drawText ("TARGET LEVEL", 120, 310, 120, 14, juce::Justification::centred, false);
-        g.drawText ("MIX",          360, 310, 120, 14, juce::Justification::centred, false);
+        g.drawText ("ATTACK",  90, 310, 60, 14, juce::Justification::centred, false);
+        g.drawText ("RELEASE", 210, 310, 60, 14, juce::Justification::centred, false);
+        g.drawText ("TARGET",  330, 310, 60, 14, juce::Justification::centred, false);
+        g.drawText ("MIX",     450, 310, 60, 14, juce::Justification::centred, false);
 
-        // Vertical divider
+        // Vertical dividers between columns
         g.setColour (kDivider.withAlpha (0.18f));
-        g.fillRect (295.f, 310.f, 0.6f, (float)(H - 318));
+        g.fillRect (180.f, 310.f, 0.6f, (float)(H - 318));
+        g.fillRect (300.f, 310.f, 0.6f, (float)(H - 318));
+        g.fillRect (420.f, 310.f, 0.6f, (float)(H - 318));
 
-        // Centre readout — current values
+        // Gain applied readout at bottom of panel
         const float gain   = processorRef.gainAppliedDb.load();
         const float target = processorRef.apvts.getRawParameterValue ("outputGain")->load();
 
         g.setFont (juce::Font (8.5f));
         g.setColour (kTextDim.withAlpha (0.50f));
         g.drawText ("TARGET:  " + juce::String (target, 1) + " dB",
-                    236, 352, 128, 13, juce::Justification::centred, false);
+                    220, 421, 160, 13, juce::Justification::centred, false);
 
         g.setFont (juce::Font (9.0f, juce::Font::bold));
         g.setColour (gain >  0.1f ? kAccent
@@ -553,6 +584,6 @@ void AutoGainAudioProcessorEditor::paint (juce::Graphics& g)
         juce::String appliedTxt = juce::String ("APPLIED:  ")
             + (gain > 0.05f ? juce::String ("+") : juce::String (""))
             + juce::String (gain, 1) + " dB";
-        g.drawText (appliedTxt, 236, 368, 128, 13, juce::Justification::centred, false);
+        g.drawText (appliedTxt, 220, 434, 160, 13, juce::Justification::centred, false);
     }
 }
