@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <JuceHeader.h>
 #include <array>
 #include <atomic>
@@ -50,7 +50,7 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
     double getCurrentSampleRate() const noexcept { return currentSampleRate; }
-    int editorZoomIndex = 0;
+    int editorZoomIndex = 1;
 
     // ── Thread-safe meters (audio thread writes, UI thread reads) ────────────
     std::atomic<float> inputLevelDb  { -120.f };

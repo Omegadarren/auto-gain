@@ -1,94 +1,26 @@
 #include "PluginEditor.h"
+#include "Ui/PlateLookAndFeel.h"
 
 // Out-of-class definitions (C++14/17 ODR safety)
 constexpr float       AutoGainAudioProcessorEditor::kZoomFactors[];
 constexpr const char* AutoGainAudioProcessorEditor::kZoomLabels[];
 
 //==============================================================================
-//  Colour palette (matches Musical EQ / Vocal Doubler)
+//  Colour palette
 //==============================================================================
-static const juce::Colour kBg       {  20,  21,  32 };
-static const juce::Colour kPanel    {  14,  15,  24 };
-static const juce::Colour kHeader   {  22,  54,  98 };
-static const juce::Colour kAccent   {  65, 145, 210 };
-static const juce::Colour kTextMain { 225, 238, 255 };
-static const juce::Colour kTextDim  { 115, 152, 195 };
-static const juce::Colour kDivider  {  48,  82, 124 };
-static const juce::Colour kBoost    {  65, 145, 210 };   // kAccent (gain boost = blue)
-static const juce::Colour kCut      { 220, 100,  60 };   // warm orange (gain cut)
+using T = PlateUi::Theme;
+static const juce::Colour kBg       = T::background();
+static const juce::Colour kPanel    = T::surface();
+static const juce::Colour kHeader   = T::surfaceRaised();
+static const juce::Colour kAccent   = T::accent();
+static const juce::Colour kTextMain = T::text();
+static const juce::Colour kTextDim  = T::textDim();
+static const juce::Colour kDivider  = T::border();
+static const juce::Colour kBoost    = T::accentBright(); // gain boost
+static const juce::Colour kCut      = T::meterHot();    // gain cut (warm red)
 
-//==============================================================================
-//  Custom LookAndFeel
-//==============================================================================
-class AutoGainLAF : public juce::LookAndFeel_V4
-{
-public:
-    AutoGainLAF()
-    {
-        setColour (juce::Slider::thumbColourId,               kAccent);
-        setColour (juce::Slider::rotarySliderFillColourId,    kAccent);
-        setColour (juce::Slider::rotarySliderOutlineColourId, kDivider);
-        setColour (juce::Slider::textBoxTextColourId,         kTextDim);
-        setColour (juce::Slider::textBoxBackgroundColourId,   kPanel.darker (0.3f));
-        setColour (juce::Slider::textBoxOutlineColourId,      juce::Colours::transparentBlack);
-        setColour (juce::Slider::textBoxHighlightColourId,    kAccent.withAlpha (0.4f));
-        setColour (juce::Label::textColourId,                 kTextMain);
-        setColour (juce::Label::backgroundColourId,           juce::Colours::transparentBlack);
-    }
-
-    //--------------------------------------------------------------------------
-    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
-                           float sliderPos, float startAngle, float endAngle,
-                           juce::Slider&) override
-    {
-        const float cx = x + width  * 0.5f;
-        const float cy = y + height * 0.5f;
-        const float r  = juce::jmin (width, height) * 0.5f - 4.f;
-
-        // Track arc
-        {
-            juce::Path arc;
-            arc.addCentredArc (cx, cy, r, r, 0.f, startAngle, endAngle, true);
-            g.setColour (kDivider.withAlpha (0.35f));
-            g.strokePath (arc, juce::PathStrokeType (2.5f,
-                juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        }
-        // Fill arc
-        {
-            float fillEnd = startAngle + sliderPos * (endAngle - startAngle);
-            juce::Path fill;
-            fill.addCentredArc (cx, cy, r, r, 0.f, startAngle, fillEnd, true);
-            g.setColour (kAccent.withAlpha (0.75f));
-            g.strokePath (fill, juce::PathStrokeType (2.5f,
-                juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        }
-        // Metallic body
-        const float kr = r * 0.62f;
-        juce::ColourGradient grad (
-            juce::Colour (90, 98, 118), cx - kr * 0.4f, cy - kr * 0.5f,
-            juce::Colour (28, 30, 42),  cx + kr * 0.4f, cy + kr * 0.5f, false);
-        g.setGradientFill (grad);
-        g.fillEllipse (cx - kr, cy - kr, kr * 2.f, kr * 2.f);
-        g.setColour (kDivider.withAlpha (0.5f));
-        g.drawEllipse (cx - kr, cy - kr, kr * 2.f, kr * 2.f, 1.f);
-        // Rim highlight
-        juce::ColourGradient rim (
-            juce::Colours::white.withAlpha (0.18f), cx, cy - kr,
-            juce::Colours::transparentBlack,         cx, cy + kr, false);
-        g.setGradientFill (rim);
-        g.fillEllipse (cx - kr, cy - kr, kr * 2.f, kr * 2.f);
-        // Thumb line
-        float angle = startAngle + sliderPos * (endAngle - startAngle);
-        float tx = cx + (kr - 4.f) * std::sin (angle);
-        float ty = cy - (kr - 4.f) * std::cos (angle);
-        g.setColour (kTextMain.withAlpha (0.9f));
-        g.drawLine (cx + (kr * 0.25f) * std::sin (angle),
-                    cy - (kr * 0.25f) * std::cos (angle),
-                    tx, ty, 1.8f);
-    }
-
-    juce::Font getLabelFont (juce::Label&) override { return juce::Font (11.5f); }
-};
+// Use the shared warm-dark PlateLookAndFeel
+using AutoGainLAF = PlateUi::PlateLookAndFeel;
 
 //==============================================================================
 //  Gain Display — history graph + dual VU meters
@@ -405,7 +337,20 @@ AutoGainAudioProcessorEditor::~AutoGainAudioProcessorEditor()
 }
 
 //==============================================================================
-void AutoGainAudioProcessorEditor::visibilityChanged()     { if (isVisible()) applyZoom(); }
+void AutoGainAudioProcessorEditor::visibilityChanged()
+{
+    if (isVisible())
+    {
+        applyZoom();
+        if (! centred)
+        {
+            centred = true;
+            if (auto* tlw = getTopLevelComponent(); tlw != this)
+                if (auto* d = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+                    tlw->setCentrePosition (d->userArea.getCentre());
+        }
+    }
+}
 void AutoGainAudioProcessorEditor::parentHierarchyChanged(){ applyZoom(); }
 void AutoGainAudioProcessorEditor::applyZoom()             { if (getPeer()) setScaleFactor (kZoomFactors[zoomIndex]); }
 void AutoGainAudioProcessorEditor::timerCallback()         { repaint(); }
@@ -447,33 +392,21 @@ void AutoGainAudioProcessorEditor::paint (juce::Graphics& g)
     const int W = kBaseW, H = kBaseH;
 
     // ── Background ───────────────────────────────────────────────────────────
-    g.setColour (kBg);
-    g.fillAll();
+    PlateUi::drawBackground (g, getLocalBounds(), true);
 
-    // ── Header gradient ──────────────────────────────────────────────────────
-    {
-        juce::ColourGradient hdr (
-            kHeader.brighter (0.05f), 0.f, 0.f,
-            kHeader.darker   (0.25f), 0.f, 50.f, false);
-        g.setGradientFill (hdr);
-        g.fillRect (0, 0, W, 50);
-        g.setColour (kDivider.withAlpha (0.45f));
-        g.fillRect (0, 49, W, 1);
-    }
+    // ── Header bar ───────────────────────────────────────────────────────────
+    PlateUi::drawHeaderBar (g, getLocalBounds(), 50, true);
 
     // ── Zoom button ──────────────────────────────────────────────────────────
     {
         auto& zb = zoomButtonBounds;
-        g.setColour (kPanel.withAlpha (0.65f));
-        g.fillRoundedRectangle (zb.toFloat(), 5.f);
-        g.setColour (kDivider.withAlpha (0.55f));
-        g.drawRoundedRectangle (zb.toFloat().reduced (0.5f), 4.5f, 0.8f);
-        g.setFont (juce::Font (10.5f, juce::Font::bold));
-        g.setColour (kTextMain);
-        g.drawText (kZoomLabels[zoomIndex], zb, juce::Justification::centred, false);
+        PlateUi::drawFloatingControl (g, zb, kZoomLabels[zoomIndex], false);
     }
 
-    // ── Title "AUTO GAIN" ─────────────────────────────────────────────────────
+    // ── OMEGADARREN brand ────────────────────────────────────────────────────
+    PlateUi::drawBrandMark (g, { 14, 10, 140, 18 }, true);
+
+    // ── Title "AUTO GAIN" ────────────────────────────────────────────────────
     {
         juce::Font titleFont (20.f, juce::Font::bold);
         g.setFont (titleFont);
@@ -482,21 +415,20 @@ void AutoGainAudioProcessorEditor::paint (juce::Graphics& g)
         float w1  = titleFont.getStringWidthFloat (p1);
         float w2  = titleFont.getStringWidthFloat (p2);
         float sx  = (W - w1 - w2) * 0.5f;
-        g.setColour (kTextMain.withAlpha (0.72f));
-        g.drawText (p1, (int)sx,       18, (int)w1 + 4, 18,
+        g.setColour (PlateUi::Theme::text().withAlpha (0.88f));
+        g.drawText (p1, (int)sx,        18, (int)w1 + 4, 18,
                     juce::Justification::centredLeft, false);
-        g.setColour (kAccent);
+        juce::ColourGradient tGrad (PlateUi::Theme::accentBright(), sx + w1, 18.f,
+                                    PlateUi::Theme::accentDeep(),   sx + w1 + w2, 36.f, false);
+        g.setGradientFill (tGrad);
         g.drawText (p2, (int)(sx + w1), 18, (int)w2 + 4, 18,
                     juce::Justification::centredLeft, false);
     }
 
     // ── Version ───────────────────────────────────────────────────────────────
     g.setFont (juce::Font (8.5f));
-    g.setColour (kTextDim.withAlpha (0.50f));
+    g.setColour (PlateUi::Theme::textDim().withAlpha (0.50f));
     g.drawText ("v1.0", W - 52, 38, 40, 10, juce::Justification::centredRight, false);
-
-    // ── Logo ──────────────────────────────────────────────────────────────────
-    drawLogoIcon (g, juce::Rectangle<float> ((float)(W - 44), 6.f, 36.f, 36.f));
 
     // ── Gain applied info strip ───────────────────────────────────────────────
     {

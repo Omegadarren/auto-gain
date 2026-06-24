@@ -34,6 +34,7 @@ target_sources(AutoGain
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
+        Source/Ui/PlateLookAndFeel.cpp
 )
 
 target_compile_definitions(AutoGain
