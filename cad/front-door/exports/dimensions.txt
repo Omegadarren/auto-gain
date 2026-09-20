@@ -1,0 +1,18 @@
+Front door assembly (inches)
+Door panel: 36.0 x 80.0 x 1.75
+Sidelight each: 12.0 x 80.0 x 1.75
+Mullion width: 3.5
+Overall unit width (no casing): 67.0
+Overall with 4.5" casing: 76.0 x 89.0
+Lock rail: 20.15 .. 24.65 from bottom
+Glass field height: 50.35
+Lower panel field height: 11.15
+Door lites: 2 x 3
+Sidelight lites: 1 x 3 (horizontals aligned to door)
+Bounding box: X[-33.50,33.50] Y[-2.55,1.08] Z[-40.00,40.00]
+
+OnShape import:
+  1. New document → Part Studio (or Assemblies)
+  2. Insert / Import → STEP → front_door_unit.step
+     (or front_door_with_casing.step / front_door_parts.step)
+  3. Optional native FeatureScript: onshape/FrontDoor.fs
